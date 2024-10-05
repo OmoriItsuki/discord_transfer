@@ -38,8 +38,18 @@ class Guild {
   audioMixer = null
 
   constructor(from_connection, to_connection) {
+    console.log(from_connection)
+    console.log(to_connection)
+    
+
     const from_ch = from_connection.channel
     const to_ch = to_connection.channel
+
+    console.log(from_ch.guild)
+    console.log(to_ch.guild)
+
+    console.log(from_ch.guild.id)
+    console.log(to_ch.guild.id)
 
     if (from_ch.guild.id !== to_ch.guild.id) throw "construct error"
     if (from_ch.id === to_ch.id) throw "construct error"

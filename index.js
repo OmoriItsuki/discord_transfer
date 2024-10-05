@@ -29,7 +29,9 @@ clients.from.on("message", async (message) => {
   const args = command_extraction.split(/ +/g)
   const command = args.shift().toLowerCase()
 
+  // &trans シアター 大会観戦
   if (command === "trans" || command === "transfer") {
+
     require("./commands/transfer")(clients, message, args)
   }
 

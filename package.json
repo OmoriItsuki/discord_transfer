@@ -4,7 +4,8 @@
   "description": "Discord voice transfer to other channel",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "debug": "node index.js"
   },
   "engines": {
     "node": ">=12"
@@ -20,8 +21,9 @@
   },
   "homepage": "https://github.com/suzukey/discord_transfer#readme",
   "dependencies": {
-    "@discordjs/opus": "^0.3.2",
-    "discord.js": "^12.3.1",
-    "audio-mixer": "^2.1.4"
+    "@discordjs/opus": "^0.9.0",
+    "@discordjs/voice": "^0.16.1",
+    "audio-mixer": "^2.1.4",
+    "discord.js": "13"
   }
 }

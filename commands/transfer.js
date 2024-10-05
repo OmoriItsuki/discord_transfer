@@ -1,3 +1,5 @@
+const { joinVoiceChannel } = require('@discordjs/voice');
+
 const command = async (clients, message, args) => {
   const channels = message.guild.channels.cache.array()
   const voice_channels = channels.filter((channel) => channel.type === "voice")
@@ -22,8 +24,19 @@ const command = async (clients, message, args) => {
   const { from_ch, to_ch } = targets
 
   // Assign a channel to each client
-  const conn_from = await clients.from.channels.cache.get(from_ch.id).join()
-  const conn_to = await clients.to.channels.cache.get(to_ch.id).join()
+  console.log("ジョイン前")
+  var fromJoinChannel = await clients.from.channels.resolveId(from_ch.id)
+  console.log(fromJoinChannel.guild.voiceAdapterCreator)
+  const conn_from = joinVoiceChannel({
+    channelId: fromJoinChannel.id,
+    guildId: fromJoinChannel.guild.id,
+    adapterCreator: fromJoinChannel.guild.voiceAdapterCreator,
+  });
+  console.log("from ジョイン")
+
+  var toJoinChannel = await clients.to.channels.cache.get(to_ch.id)
+  const conn_to = await toJoinChannel.joinVoiceChannel()
+  console.log("to ジョイン")
 
   clients.connect(conn_from, conn_to)
   message.channel.send(`Transfer voice from \`${from_ch.name}\` to \`${to_ch.name}\``)
