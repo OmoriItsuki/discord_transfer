@@ -1,10 +1,11 @@
 const { joinVoiceChannel } = require('@discordjs/voice');
 
 const command = async (clients, message, args) => {
-  const channels = message.guild.channels.cache.array()
-  const voice_channels = channels.filter((channel) => channel.type === "voice")
+  const channels = message.guild.channels.cache
 
-  if (voice_channels.length < 2) {
+  const voice_channels = channels.filter((channel) => channel.type === "GUILD_VOICE")
+
+  if (voice_channels.values().length < 2) {
     message.channel.send("error: Requires at least two voice channels")
     return
   }
@@ -25,19 +26,31 @@ const command = async (clients, message, args) => {
 
   // Assign a channel to each client
   console.log("ジョイン前")
-  var fromJoinChannel = await clients.from.channels.resolveId(from_ch.id)
-  console.log(fromJoinChannel.guild.voiceAdapterCreator)
+  var fromJoinChannel = await clients.from.channels.fetch(from_ch.id)
+
   const conn_from = joinVoiceChannel({
     channelId: fromJoinChannel.id,
     guildId: fromJoinChannel.guild.id,
     adapterCreator: fromJoinChannel.guild.voiceAdapterCreator,
+    group: "from",
+    selfDeaf: false,
+    selfMute: true,
   });
   console.log("from ジョイン")
 
-  var toJoinChannel = await clients.to.channels.cache.get(to_ch.id)
-  const conn_to = await toJoinChannel.joinVoiceChannel()
+  var toJoinChannel = await clients.to.channels.fetch(to_ch.id)
+  const conn_to = joinVoiceChannel({
+    channelId: toJoinChannel.id,
+    guildId: toJoinChannel.guild.id,
+    adapterCreator: toJoinChannel.guild.voiceAdapterCreator,
+    group: "to",
+    selfDeaf: true,
+    selfMute: false,
+  });
+
   console.log("to ジョイン")
 
+//  clients.connect(fromJoinChannel, toJoinChannel)
   clients.connect(conn_from, conn_to)
   message.channel.send(`Transfer voice from \`${from_ch.name}\` to \`${to_ch.name}\``)
 }

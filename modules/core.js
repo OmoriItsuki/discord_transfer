@@ -1,14 +1,23 @@
 const discord = require("discord.js")
 const { Silence } = require("./audio")
 const AudioMixer = require("audio-mixer")
+const { createAudioPlayer, createAudioResource, StreamType, demuxProbe } = require("@discordjs/voice")
 class Transfer {
   from = null
   to = null
   guilds = {}
 
   constructor() {
-    this.from = new discord.Client()
-    this.to = new discord.Client()
+    this.from = new discord.Client({ intents: [
+      "GUILDS",
+      "GUILD_MESSAGES",	
+      "GUILD_VOICE_STATES",	
+    ]})
+    this.to = new discord.Client({ intents:[
+      "GUILDS",
+      "GUILD_MESSAGES",
+      "GUILD_VOICE_STATES",
+    ]})
   }
 
   login = async (from_token, to_token) => {
@@ -38,30 +47,28 @@ class Guild {
   audioMixer = null
 
   constructor(from_connection, to_connection) {
-    console.log(from_connection)
-    console.log(to_connection)
-    
+    // console.log(from_connection)
+    // console.log(to_connection)
 
-    const from_ch = from_connection.channel
-    const to_ch = to_connection.channel
+    const from_config = from_connection.joinConfig
+    const to_config = to_connection.joinConfig
 
-    console.log(from_ch.guild)
-    console.log(to_ch.guild)
+    // 参加したサーバーが違う
+    if (from_config.guildId !== to_config.guildId) 
+      throw "construct error"
 
-    console.log(from_ch.guild.id)
-    console.log(to_ch.guild.id)
+    // 参加したボイスチャンネルが同じ
+    if (from_config.channelId === to_config.channelId) 
+      throw "construct error"
 
-    if (from_ch.guild.id !== to_ch.guild.id) throw "construct error"
-    if (from_ch.id === to_ch.id) throw "construct error"
-
-    this.id = from_ch.guild.id
+    this.id = from_config.guildId
     this.connection = {
       from: from_connection,
       to: to_connection
     }
 
-    this.connection.from.play(new Silence(), { type: "opus" })
-    this.connection.to.play(new Silence(), { type: "opus" })
+    this.connection.from.playOpusPacket(new Silence())
+    this.connection.to.playOpusPacket(new Silence())
 
     const mixer = new AudioMixer.Mixer({
       channels: 2,
@@ -69,34 +76,46 @@ class Guild {
       sampleRate: 48000
     })
 
-    this.connection.to.play(mixer, { type: "converted" })
+    const audioResource = createAudioResource(mixer, {
+      inputType: StreamType.Opus,
+    })
+    const audioPlayer = createAudioPlayer()
+    this.connection.to.subscribe(audioPlayer)
+    audioPlayer.play(audioResource)
     this.audioMixer = mixer
-
-    this.connection.from.on("speaking", (user, speaking) => {
-      if (speaking) {
-        if (this.audioMixer == null) {
-          throw "audioMixer is null"
-        } else {
-          const stream = this.connection.from.receiver.createStream(user, {
-            mode: "pcm"
-          })
-          const standaloneInput = new AudioMixer.Input({
-            channels: 2,
-            bitDepth: 16,
-            sampleRate: 48000,
-            volume: 80
-          })
-          this.audioMixer.addInput(standaloneInput)
-          const p = stream.pipe(standaloneInput)
-          stream.on("end", () => {
+    this.connection.from.receiver.speaking.on("start", (user) => {
+      console.log("しゃべってます")
+      if (this.audioMixer == null) {
+        throw "audioMixer is null"
+      } else {
+        const stream = this.connection.from.receiver.subscribe(user, {
+          end: () => {
+            console.log("しゃべり終わり2")
             if (this.audioMixer != null) {
               this.audioMixer.removeInput(standaloneInput)
               standaloneInput.destroy()
               stream.destroy()
               p.destroy()
             }
-          })
-        }
+          }
+        })
+        const standaloneInput = new AudioMixer.Input({
+          channels: 2,
+          bitDepth: 16,
+          sampleRate: 48000,
+          volume: 80
+        })
+        this.audioMixer.addInput(standaloneInput)
+        const p = stream.pipe(standaloneInput)
+        stream.on("close", () => {
+          console.log("しゃべり終わり")
+          if (this.audioMixer != null) {
+            this.audioMixer.removeInput(standaloneInput)
+            standaloneInput.destroy()
+            stream.destroy()
+            p.destroy()
+          }
+        })
       }
     })
   }
