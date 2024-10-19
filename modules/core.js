@@ -1,7 +1,7 @@
 const discord = require("discord.js")
 const { Silence } = require("./audio")
 const AudioMixer = require("audio-mixer")
-const { createAudioPlayer, createAudioResource, StreamType, demuxProbe } = require("@discordjs/voice")
+const { createAudioPlayer, createAudioResource, StreamType, demuxProbe, EndBehaviorType, NoSubscriberBehavior } = require("@discordjs/voice")
 class Transfer {
   from = null
   to = null
@@ -77,9 +77,14 @@ class Guild {
     })
 
     const audioResource = createAudioResource(mixer, {
-      inputType: StreamType.Opus,
+      inputType: StreamType.Raw,
     })
-    const audioPlayer = createAudioPlayer()
+    const audioPlayer = createAudioPlayer({
+      behaviors: {
+        // 聞いている人がいなくても音声を中継してくれるように設定
+        noSubscriber: NoSubscriberBehavior.play,
+      },
+    })
     this.connection.to.subscribe(audioPlayer)
     audioPlayer.play(audioResource)
     this.audioMixer = mixer
@@ -89,16 +94,23 @@ class Guild {
         throw "audioMixer is null"
       } else {
         const stream = this.connection.from.receiver.subscribe(user, {
-          end: () => {
-            console.log("しゃべり終わり2")
+          end: {
+            behavior: EndBehaviorType.AfterSilence,
+            duration: 1000
+          },
+          destroy:() => {
+            console.log("しゃべり終わ２")
             if (this.audioMixer != null) {
               this.audioMixer.removeInput(standaloneInput)
               standaloneInput.destroy()
               stream.destroy()
               p.destroy()
             }
-          }
+          },
+          autoDestroy:true,
+
         })
+
         const standaloneInput = new AudioMixer.Input({
           channels: 2,
           bitDepth: 16,
@@ -107,15 +119,6 @@ class Guild {
         })
         this.audioMixer.addInput(standaloneInput)
         const p = stream.pipe(standaloneInput)
-        stream.on("close", () => {
-          console.log("しゃべり終わり")
-          if (this.audioMixer != null) {
-            this.audioMixer.removeInput(standaloneInput)
-            standaloneInput.destroy()
-            stream.destroy()
-            p.destroy()
-          }
-        })
       }
     })
   }
