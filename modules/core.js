@@ -2,6 +2,9 @@ const discord = require("discord.js")
 const { Silence } = require("./audio")
 const AudioMixer = require("audio-mixer")
 const { createAudioPlayer, createAudioResource, StreamType, demuxProbe, EndBehaviorType, NoSubscriberBehavior } = require("@discordjs/voice")
+const Prism = require('prism-media')
+const {PassThrough} = require('stream')
+
 class Transfer {
   from = null
   to = null
@@ -73,42 +76,21 @@ class Guild {
     const mixer = new AudioMixer.Mixer({
       channels: 2,
       bitDepth: 16,
-      sampleRate: 48000
+      sampleRate: 48000,
+      clearInterval: 250,
     })
 
-    const audioResource = createAudioResource(mixer, {
-      inputType: StreamType.Raw,
-    })
-    const audioPlayer = createAudioPlayer({
-      behaviors: {
-        // 聞いている人がいなくても音声を中継してくれるように設定
-        noSubscriber: NoSubscriberBehavior.play,
-      },
-    })
-    this.connection.to.subscribe(audioPlayer)
-    audioPlayer.play(audioResource)
     this.audioMixer = mixer
     this.connection.from.receiver.speaking.on("start", (user) => {
-      console.log("しゃべってます")
+      console.log("しゃべってます:", user)
       if (this.audioMixer == null) {
         throw "audioMixer is null"
       } else {
         const stream = this.connection.from.receiver.subscribe(user, {
           end: {
             behavior: EndBehaviorType.AfterSilence,
-            duration: 1000
+            duration: 100
           },
-          destroy:() => {
-            console.log("しゃべり終わ２")
-            if (this.audioMixer != null) {
-              this.audioMixer.removeInput(standaloneInput)
-              standaloneInput.destroy()
-              stream.destroy()
-              p.destroy()
-            }
-          },
-          autoDestroy:true,
-
         })
 
         const standaloneInput = new AudioMixer.Input({
@@ -117,8 +99,45 @@ class Guild {
           sampleRate: 48000,
           volume: 80
         })
+
+        const rawStream = new PassThrough();
+
         this.audioMixer.addInput(standaloneInput)
-        const p = stream.pipe(standaloneInput)
+        
+        stream
+          .pipe(new Prism.opus.Decoder({
+            rate: 48000,
+            channels: 2,
+            frameSize: 960,
+          }))
+          .pipe(
+            rawStream
+          )
+
+        const p = rawStream.pipe(standaloneInput)
+
+        const player = createAudioPlayer({
+          behaviors: {
+            noSubscriber: NoSubscriberBehavior.Play
+          },
+        });
+
+        const resource = createAudioResource(mixer, {
+          inputType: StreamType.Raw,
+        })
+
+        player.play(resource);
+        this.connection.to.subscribe(player);
+
+        rawStream.on("end", async () => {
+          console.log("end:" + user)
+          if (this.audioMixer != null) {
+            this.audioMixer.removeInput(standaloneInput)
+            standaloneInput.destroy()
+            rawStream.destroy()
+            p.destroy()
+          }
+        })
       }
     })
   }
