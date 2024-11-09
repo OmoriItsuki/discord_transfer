@@ -50,8 +50,6 @@ class Guild {
   audioMixer = null
 
   constructor(from_connection, to_connection) {
-    // console.log(from_connection)
-    // console.log(to_connection)
 
     const from_config = from_connection.joinConfig
     const to_config = to_connection.joinConfig
@@ -82,7 +80,6 @@ class Guild {
 
     this.audioMixer = mixer
     this.connection.from.receiver.speaking.on("start", (user) => {
-      console.log("しゃべってます:", user)
       if (this.audioMixer == null) {
         throw "audioMixer is null"
       } else {
@@ -130,7 +127,6 @@ class Guild {
         this.connection.to.subscribe(player);
 
         rawStream.on("end", async () => {
-          console.log("end:" + user)
           if (this.audioMixer != null) {
             this.audioMixer.removeInput(standaloneInput)
             standaloneInput.destroy()

@@ -25,7 +25,6 @@ const command = async (clients, message, args) => {
   const { from_ch, to_ch } = targets
 
   // Assign a channel to each client
-  console.log("ジョイン前")
   var fromJoinChannel = await clients.from.channels.fetch(from_ch.id)
 
   const conn_from = joinVoiceChannel({
@@ -36,7 +35,6 @@ const command = async (clients, message, args) => {
     selfDeaf: false,
     selfMute: true,
   });
-  console.log("from ジョイン")
 
   var toJoinChannel = await clients.to.channels.fetch(to_ch.id)
   const conn_to = joinVoiceChannel({
@@ -47,8 +45,6 @@ const command = async (clients, message, args) => {
     selfDeaf: true,
     selfMute: false,
   });
-
-  console.log("to ジョイン")
 
 //  clients.connect(fromJoinChannel, toJoinChannel)
   clients.connect(conn_from, conn_to)
